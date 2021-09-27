@@ -1,0 +1,44 @@
+Current Week
+```{r}
+CFB2021 <- read.csv("C:\\Users\\qschr\\OneDrive\\Desktop\\NCAA\\CFB2021.csv", header = TRUE, sep = ",")
+CFB2021 <- CFB2021[,-c(1,3)]
+CFB2021[is.na(CFB2021)] <- 0
+
+#### Change the number in quotes to current week and remove others that may also contain that number
+#### Example  Week 2 and remove week 12
+Current_Wk <- CFB2021[grepl("2", CFB2021$Wk),]
+Current_Wk <- Current_Wk[!grepl("12", Current_Wk$Wk),]
+
+
+Current_Wk$TmPts <- predict(mod1, newdata = Current_Wk)
+Current_Wk$TmPts <- round(Current_Wk$TmPts,2)
+Current_Wk$p1 <- predict(rf1, Current_Wk)
+Current_Wk$p1 <- round(Current_Wk$p1,2)
+Current_Wk <- Current_Wk[,c(1:4,83,84)]
+for (i in 1:length(Current_Wk$Team)) {
+  for (j in 1:length(Current_Wk$Opp)) {
+    Current_Wk$OppPts[i] <- ifelse(Current_Wk$Team[i] == Current_Wk$Opp[j],Current_Wk$TmPts[j],"")
+    ifelse(Current_Wk$OppPts[i] == Current_Wk$TmPts[j], break, next)
+  }
+}
+for (i in 1:length(Current_Wk$Team)) {
+  for (j in 1:length(Current_Wk$Opp)) {
+    Current_Wk$OppP1[i] <- ifelse(Current_Wk$Team[i] == Current_Wk$Opp[j],Current_Wk$p1[j],"")
+    ifelse(Current_Wk$OppP1[i] == Current_Wk$p1[j], break, next)
+  }
+}
+
+Current_Wk$OppPts <- as.numeric(Current_Wk$OppPts)
+Current_Wk$OppP1 <- as.numeric(Current_Wk$OppP1)
+
+for (i in 1:length(Current_Wk$Team)) {
+  Current_Wk$ProjPts[i] <- round((Current_Wk$TmPts[i] + Current_Wk$p1[i])/2,2)
+  Current_Wk$OppProjPts[i] <- round((Current_Wk$OppPts[i]+Current_Wk$OppP1[i])/2,2)
+  Current_Wk$Winner[i] <- ifelse(Current_Wk$ProjPts[i] > Current_Wk$OppProjPts[i],Current_Wk$Team[i],Current_Wk$Opp[i])
+  Current_Wk$Spread[i] <- ifelse(Current_Wk$Winner[i] == Current_Wk$Team[i], Current_Wk$ProjPts[i] - Current_Wk$OppProjPts[i], Current_Wk$OppProjPts[i] - Current_Wk$ProjPts[i])
+}
+
+dist <- length(Current_Wk$Team)/2
+Current_Wk <- Current_Wk[1:dist,c("Year","Wk","Team","Opp","ProjPts","OppProjPts","Winner","Spread")]
+
+rm(i, j, dist)
